@@ -1,42 +1,44 @@
 """AI layer: turn a git diff into a learning moment.
 
-Both functions degrade gracefully: if there's no ANTHROPIC_API_KEY (or the
-`anthropic` package isn't installed), they fall back to simple offline
-behaviour so the tool still works.
+Both functions degrade gracefully. They route through `providers`, which prefers
+the user's already-authenticated agent CLI (no API key needed) and falls back to
+the direct API, then to offline behaviour — so the tool always works.
+
+When a `grounding` subgraph is supplied (retrieved from the codebase graph), it's
+folded into the prompt so questions can probe ripple effects and intent, not just
+the literal lines that changed.
 """
 from __future__ import annotations
 
-import os
+from . import providers
 
-# Fast + cheap by default. Swap to "claude-sonnet-4-6" for sharper grading.
-DEFAULT_MODEL = os.environ.get("DIFFQUIZ_MODEL", "claude-haiku-4-5-20251001")
-
-
-def _client():
-    """Return an Anthropic client, or None if unavailable."""
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        return None
-    try:
-        from anthropic import Anthropic
-    except ImportError:
-        return None
-    return Anthropic()
+# Re-exported for back-compat; the source of truth is providers.DEFAULT_MODEL.
+DEFAULT_MODEL = providers.DEFAULT_MODEL
 
 
-def generate_question(diff: str, changed_files: list[str]) -> str:
+def _context_block(grounding: str | None) -> str:
+    if not grounding:
+        return ""
+    return (
+        "Use this map of how the changed code connects to the rest of the repo "
+        "to ask about ripple effects or intent, not just the literal change:\n"
+        f"<context>\n{grounding[:4000]}\n</context>\n\n"
+    )
+
+
+def generate_question(
+    diff: str, changed_files: list[str], grounding: str | None = None
+) -> str:
     """A question to ask BEFORE the dev sees the diff.
 
-    With an API key, Claude writes a pointed question that tests understanding
+    With a provider, an LLM writes a pointed question that tests understanding
     without leaking the implementation. Offline, we ask a sensible default.
     """
-    client = _client()
     files = ", ".join(changed_files) or "the working tree"
-
-    if client is None:
-        return (
-            f"These files just changed: {files}.\n"
-            "Before you look — what do you think changed, and why?"
-        )
+    offline = (
+        f"These files just changed: {files}.\n"
+        "Before you look — what do you think changed, and why?"
+    )
 
     prompt = (
         "You are a coding mentor running a 'predict the diff' drill. "
@@ -45,31 +47,19 @@ def generate_question(diff: str, changed_files: list[str]) -> str:
         "(max 25 words) that tests whether the developer understands what changed "
         "and why — WITHOUT revealing the answer. Focus on intent, risk, or a "
         "non-obvious consequence. Output only the question.\n\n"
+        f"{_context_block(grounding)}"
         f"<diff>\n{diff[:6000]}\n</diff>"
     )
-    try:
-        resp = client.messages.create(
-            model=DEFAULT_MODEL,
-            max_tokens=150,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return resp.content[0].text.strip()
-    except Exception:
-        return (
-            f"These files just changed: {files}.\n"
-            "Before you look — what do you think changed, and why?"
-        )
+    return providers.complete_interactive(prompt, model=DEFAULT_MODEL, max_tokens=150) or offline
 
 
-def grade_prediction(diff: str, prediction: str) -> str | None:
+def grade_prediction(
+    diff: str, prediction: str, grounding: str | None = None
+) -> str | None:
     """Score the dev's guess against the real diff and flag risks.
 
-    Returns None when offline (caller just shows the diff).
+    Returns None when no provider is available (caller just shows the diff).
     """
-    client = _client()
-    if client is None:
-        return None
-
     prompt = (
         "You are a sharp code reviewer. A developer predicted what an AI agent "
         "changed, then saw the real diff. Compare their prediction to the diff.\n\n"
@@ -78,15 +68,8 @@ def grade_prediction(diff: str, prediction: str) -> str | None:
         "MISSED: the most important thing they didn't anticipate (skip if none).\n"
         "WATCH: any bug, security, or correctness risk you see in the diff "
         "(skip if genuinely clean). Be concrete; cite the line/symbol.\n\n"
+        f"{_context_block(grounding)}"
         f"<prediction>\n{prediction}\n</prediction>\n\n"
         f"<diff>\n{diff[:8000]}\n</diff>"
     )
-    try:
-        resp = client.messages.create(
-            model=DEFAULT_MODEL,
-            max_tokens=400,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return resp.content[0].text.strip()
-    except Exception as e:
-        return f"(AI grading unavailable: {e})"
+    return providers.complete_interactive(prompt, model=DEFAULT_MODEL, max_tokens=400)
