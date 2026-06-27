@@ -46,6 +46,9 @@ pip install "diffquiz[ai]"      # + AI scoring & risk flags (recommended)
 ## Quickstart
 
 ```bash
+# One-time: build the codebase graph that grounds every question
+diffquiz index
+
 # In your project, after your agent has made some changes:
 diffquiz once
 
@@ -60,14 +63,18 @@ diffquiz watch
 tmux new-session \; split-window -h -p 33 'diffquiz watch'
 ```
 
-### AI scoring (optional but worth it)
+### Scoring & risk flags (zero-config)
+
+`diffquiz` writes questions and grades guesses using the first backend it finds:
+
+1. **Claude Code, if you're logged in** — no API key needed. It calls `claude -p`
+   under the hood using your existing session (tools disabled, so it only answers).
+2. **`ANTHROPIC_API_KEY`**, if set — a direct API call.
+3. **Offline** — neither available: it just reveals the diff after your guess.
 
 ```bash
-export ANTHROPIC_API_KEY=sk-...        # unlocks grading + risk flags
 export DIFFQUIZ_MODEL=claude-sonnet-4-6  # optional: sharper, slower than the default
 ```
-
-Without a key, `diffquiz` still works — it shows the diff after your guess, just without the AI scorecard.
 
 ## Why predict-first works
 
@@ -75,12 +82,15 @@ Prediction before feedback is one of the most reliable learning mechanics there 
 
 ## Roadmap
 
+See [DESIGN.md](DESIGN.md) for the full architecture and phased build.
+
+- [x] Zero-config scoring via your existing Claude Code login (no API key)
+- [x] Codebase **knowledge graph** (`diffquiz index`) that grounds questions in blast radius
+- [ ] LLM-enriched node summaries + one-time, cost-gated indexing
+- [ ] Incremental graph updates on each diff + untracked-file support
+- [ ] Streak + knowledge-coverage map (`diffquiz map`)
+- [ ] More agent adapters (Codex, Gemini) — see `diffquiz/providers/`
 - [ ] `docs/demo.gif` — record the first real session
-- [ ] Untracked-file support (currently quizzes on tracked changes vs `HEAD`)
-- [ ] Streak + score history (`~/.diffquiz/`)
-- [ ] Spaced-repetition deck from past diffs
-- [ ] Pluggable agents beyond git (watch a log, a webhook, etc.)
-- [ ] A proper Textual TUI for the watch pane
 
 Got an idea? [Open an issue](https://github.com/Bravim-Ketan-Purohit/GIT-diff/issues) — see [CONTRIBUTING](CONTRIBUTING.md).
 
