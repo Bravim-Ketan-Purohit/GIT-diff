@@ -6,12 +6,16 @@ from pathlib import Path
 
 
 def _run(args: list[str], cwd: str) -> str:
-    result = subprocess.run(
-        ["git", *args],
-        cwd=cwd,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
     if result.returncode != 0:
         return ""
     return result.stdout
@@ -32,8 +36,18 @@ def get_changed_files(path: str = ".") -> list[str]:
     return [line.strip() for line in out.splitlines() if line.strip()]
 
 
+def list_source_files(path: str = ".") -> list[str]:
+    """All source files git knows about: tracked + untracked-but-not-ignored.
+
+    Uses `git ls-files` so it respects .gitignore (skips .venv, __pycache__,
+    .diffquiz, etc.) while still seeing brand-new files not yet committed.
+    """
+    out = _run(["ls-files", "--cached", "--others", "--exclude-standard"], path)
+    return [line.strip() for line in out.splitlines() if line.strip()]
+
+
 def diff_fingerprint(diff: str) -> str:
     """Cheap identity for a diff so we only quiz once per change."""
     import hashlib
 
-    return hashlib.sha1(diff.encode("utf-8", "ignore")).hexdigest()
+    return hashlib.sha256(diff.encode("utf-8", "ignore")).hexdigest()
