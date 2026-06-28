@@ -74,7 +74,12 @@ def _carry_over_summaries(repo: str, graph: Graph) -> None:
         return
     for node_id, node in graph.nodes.items():
         prev = old.nodes.get(node_id)
-        if prev and prev.summary and prev.content_hash == node.content_hash:
+        if (
+            prev
+            and prev.summary
+            and node.content_hash
+            and prev.content_hash == node.content_hash
+        ):
             node.summary = prev.summary
             node.summary_model = prev.summary_model
             node.last_indexed = prev.last_indexed

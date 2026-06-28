@@ -43,11 +43,17 @@ def needs_summary(node: Node) -> bool:
 
 
 def estimate_cost(graph: Graph) -> Estimate:
+    child_count: dict[str, int] = {}
+    for e in graph.edges:
+        if e.type == "contains":
+            child_count[e.src] = child_count.get(e.src, 0) + 1
     needing = [n for n in graph.nodes.values() if needs_summary(n)]
     tokens = 0
     for n in needing:
         span_lines = max(n.span[1] - n.span[0] + 1, 1)
         in_toks = min(span_lines * 40, 1500) // 4 + 100  # ~40 chars/line, ~4 chars/token
+        if n.kind not in ("function", "method"):
+            in_toks += child_count.get(n.id, 0) * 25  # child summaries join the prompt
         tokens += in_toks + 40
     return Estimate(nodes=len(needing), est_tokens=tokens)
 
@@ -79,8 +85,11 @@ def enrich(repo, graph, *, model=None, on_node=None, save_every=_SAVE_EVERY) -> 
             if on_node is not None:
                 on_node(node, summary)
     except KeyboardInterrupt:
-        store.save_graph(repo, graph)
-        _save_manifest(repo, graph, "partial", model)
+        try:  # best-effort save so a disk error can't mask the interrupt
+            store.save_graph(repo, graph)
+            _save_manifest(repo, graph, "partial", model)
+        except Exception:
+            pass
         raise
 
     store.save_graph(repo, graph)
@@ -106,7 +115,7 @@ def _prompt_for(graph: Graph, node: Node, repo: str, cache: dict) -> str:
     if node.kind in ("function", "method"):
         return (
             f"{_RULES}Describe what this {node.kind} does and why it exists:\n\n"
-            f"{head}\n<code>\n{src[:1500]}\n</code>"
+            f"{head}\n<code>\n{_fence_code(src, 1500)}\n</code>"
         )
 
     kind = "class" if node.kind == "class" else "file"
@@ -115,7 +124,7 @@ def _prompt_for(graph: Graph, node: Node, repo: str, cache: dict) -> str:
     return (
         f"{_RULES}Describe what this {kind} is responsible for:\n\n{head}\n"
         + (f"It contains:\n{contains}" if contains else "")
-        + f"<code>\n{src[:1200]}\n</code>"
+        + f"<code>\n{_fence_code(src, 1200)}\n</code>"
     )
 
 
@@ -125,20 +134,33 @@ def _child_summaries(graph: Graph, node: Node) -> list[str]:
         if e.type == "contains" and e.src == node.id:
             child = graph.nodes.get(e.dst)
             if child and child.summary:
-                out.append(f"{child.name}: {child.summary}")
+                # Re-clean on reuse: a child summary feeds into the parent prompt.
+                out.append(f"{child.name}: {_clean_summary(child.summary)}")
     return out
 
 
 def _source_slice(repo: str, node: Node, cache: dict) -> str:
     if node.path not in cache:
-        try:
-            cache[node.path] = (Path(repo) / node.path).read_text(
-                encoding="utf-8", errors="replace"
-            ).splitlines()
-        except OSError:
-            cache[node.path] = []
+        cache[node.path] = _read_lines(repo, node.path)
     lines = cache[node.path]
     return "\n".join(lines[node.span[0] - 1 : node.span[1]])
+
+
+def _read_lines(repo: str, rel: str) -> list[str]:
+    # node.path may come from a tampered graph.json; never read outside the repo.
+    root = Path(repo).resolve()
+    full = (root / rel).resolve()
+    if not full.is_relative_to(root):
+        return []
+    try:
+        return full.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return []
+
+
+def _fence_code(src: str, limit: int) -> str:
+    """Stop source from breaking out of the <code> block in an enrichment prompt."""
+    return src[:limit].replace("</code>", "<\\/code>")
 
 
 def _one_line(text: str) -> str:
@@ -146,10 +168,10 @@ def _one_line(text: str) -> str:
 
 
 def _clean_summary(text: str) -> str:
-    """Strip any agent tool-call narration the CLI may emit, then collapse to a line."""
-    for pat in (r"<function_calls>.*?</function_calls>", r"<invoke\b.*?</invoke>",
-                r"<parameter\b.*?</parameter>"):
-        text = re.sub(pat, " ", text, flags=re.DOTALL)
+    """Strip agent tool-call / thinking narration the CLI may emit, then collapse."""
+    for tag in ("function_calls", "invoke", "parameter", "thinking",
+                "tool_use", "tool_result"):
+        text = re.sub(rf"<{tag}\b.*?</{tag}>", " ", text, flags=re.DOTALL)
     return _one_line(text)
 
 

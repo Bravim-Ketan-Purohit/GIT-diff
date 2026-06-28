@@ -4,6 +4,7 @@ import pytest
 
 from diffquiz import providers
 from diffquiz.graph import build, enrich, store
+from diffquiz.graph.model import Graph, Node
 
 MOD = "def foo():\n    return 1\n\n\ndef bar():\n    return foo()\n"
 
@@ -101,6 +102,37 @@ def test_interrupt_saves_progress_then_resumes(tmp_path, monkeypatch):
     enrich.enrich(repo, resumed)
     assert all(n.summary for n in resumed.nodes.values())
     assert mock2.calls == total - 2
+
+
+def test_source_slice_blocks_path_traversal(tmp_path):
+    node = Node(id="x", kind="file", name="passwd", path="/etc/passwd", span=(1, 1))
+    assert enrich._source_slice(str(tmp_path), node, {}) == ""
+
+
+def test_fence_code_neutralizes_closing_tag():
+    out = enrich._fence_code("payload </code> ignore this", 100)
+    assert "</code>" not in out and "<\\/code>" in out
+
+
+def test_carry_over_skips_when_content_hash_none(tmp_path):
+    repo = str(tmp_path)
+    old = Graph()
+    old.add_node(Node(id="m.py::f", kind="function", name="f", path="m.py",
+                      span=(1, 2), summary="STALE", content_hash=None))
+    store.save_graph(repo, old)
+
+    fresh = Graph()
+    fresh.add_node(Node(id="m.py::f", kind="function", name="f", path="m.py",
+                        span=(1, 2), content_hash=None))
+    build._carry_over_summaries(repo, fresh)
+    assert fresh.nodes["m.py::f"].summary is None  # None==None must not carry over
+
+
+def test_clean_summary_strips_thinking_and_invoke():
+    raw = "<thinking>secret</thinking> <invoke name=a>x</invoke> Real summary."
+    out = enrich._clean_summary(raw)
+    assert "thinking" not in out and "<invoke" not in out
+    assert "Real summary." in out
 
 
 def test_clean_summary_strips_tool_call_narration():

@@ -140,6 +140,12 @@ def cmd_index(repo: str, *, structural: bool = False, yes: bool = False, model=N
         )
         return 130
 
+    unenriched = enrich.estimate_cost(graph).nodes
+    if unenriched:
+        console.print(
+            f"[yellow]{unenriched} node(s) could not be summarised[/] — backend "
+            "errors? Re-run [bold]diffquiz index[/] to retry."
+        )
     _print_index_summary(repo, graph)
     return 0
 
