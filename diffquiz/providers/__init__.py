@@ -31,6 +31,7 @@ __all__ = [
     "bulk_chain",
     "complete_interactive",
     "complete_bulk",
+    "provider_warning",
 ]
 
 # Canonical backend names a user can pin via DIFFQUIZ_PROVIDER.
@@ -51,6 +52,26 @@ def _forced() -> Provider | None:
     """The single backend pinned via DIFFQUIZ_PROVIDER, or None if unset/unknown."""
     cls = _BY_NAME.get(os.environ.get("DIFFQUIZ_PROVIDER", "").strip().lower())
     return cls() if cls else None
+
+
+def provider_warning() -> str | None:
+    """A message if DIFFQUIZ_PROVIDER is set but won't work, else None."""
+    name = os.environ.get("DIFFQUIZ_PROVIDER", "").strip()
+    if not name:
+        return None
+    if name.lower() not in _BY_NAME:
+        return (
+            f"DIFFQUIZ_PROVIDER={name!r} isn't a known backend "
+            f"({', '.join(PROVIDER_NAMES)}); using auto-detect instead."
+        )
+    forced = _forced()
+    if forced is not None and not forced.available():
+        return (
+            f"DIFFQUIZ_PROVIDER={name!r} is set, but that backend isn't available "
+            "here (not installed / not logged in / no key) — diffquiz will run "
+            "without scoring until it's reachable."
+        )
+    return None
 
 
 def interactive_chain() -> list[Provider]:

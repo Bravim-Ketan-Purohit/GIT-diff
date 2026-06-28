@@ -180,3 +180,27 @@ def test_unknown_or_unset_provider_uses_default_chains(monkeypatch):
     monkeypatch.delenv("DIFFQUIZ_PROVIDER", raising=False)
     assert providers.interactive_chain()[0].name == "claude-cli"
     assert providers.bulk_chain()[0].name == "anthropic-api"
+
+
+def test_provider_warning_none_when_unset(monkeypatch):
+    monkeypatch.delenv("DIFFQUIZ_PROVIDER", raising=False)
+    assert providers.provider_warning() is None
+
+
+def test_provider_warning_for_unknown_name(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "geminii")
+    w = providers.provider_warning()
+    assert w and "isn't a known backend" in w
+
+
+def test_provider_warning_for_known_but_unavailable(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "claude")
+    monkeypatch.setattr(shutil, "which", lambda _: None)   # claude CLI "not installed"
+    w = providers.provider_warning()
+    assert w and "isn't available" in w
+
+
+def test_provider_warning_silent_when_available(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "claude")
+    monkeypatch.setattr(shutil, "which", lambda _: "/x/claude")
+    assert providers.provider_warning() is None

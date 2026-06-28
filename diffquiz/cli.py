@@ -213,6 +213,10 @@ def main(argv: list[str] | None = None) -> int:
         console.print(f"[red]Not a git repo:[/] {args.repo}")
         return 1
 
+    warning = providers.provider_warning()
+    if warning:
+        console.print(f"[yellow]⚠ {warning}[/]")
+
     if args.command == "watch":
         return cmd_watch(args.repo, args.interval)
     if args.command == "index":
