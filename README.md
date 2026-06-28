@@ -88,7 +88,7 @@ See [DESIGN.md](DESIGN.md) for the full architecture and phased build.
 - [x] Zero-config scoring via your existing Claude Code login (no API key)
 - [x] Codebase **knowledge graph** (`diffquiz index`) that grounds questions in blast radius
 - [x] LLM-enriched node summaries — one-time, cost-gated, resumable indexing
-- [ ] Incremental graph updates on each diff + untracked-file support
+- [x] Incremental graph updates on each diff + untracked-file support
 - [ ] Streak + knowledge-coverage map (`diffquiz map`)
 - [ ] More agent adapters (Codex, Gemini) — see `diffquiz/providers/`
 - [ ] `docs/demo.gif` — record the first real session

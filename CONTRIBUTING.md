@@ -5,7 +5,6 @@ to make your first contribution to.
 
 ## Good first issues
 - Add a provider adapter for another agent CLI (see `diffquiz/providers/codex_cli.py`)
-- Add untracked-file support to the quiz path (the graph already indexes them)
 - Persist a streak/score in `.diffquiz/`
 - Add a new question style (see `ai.generate_question`)
 - Improve the tmux/zellij/wezterm split recipes in the README
