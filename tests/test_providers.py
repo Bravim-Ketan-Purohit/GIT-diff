@@ -157,3 +157,26 @@ def test_non_claude_adapters_ignore_claude_default_model(monkeypatch):
 
     GeminiCLIProvider().complete("q", model="gemini-2.5-pro")
     assert "-m" in captured["cmd"] and "gemini-2.5-pro" in captured["cmd"]
+
+
+# --- DIFFQUIZ_PROVIDER selector -------------------------------------------
+
+def test_forced_provider_pins_both_chains(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "codex")
+    assert [p.name for p in providers.interactive_chain()] == ["codex-cli"]
+    assert [p.name for p in providers.bulk_chain()] == ["codex-cli"]
+
+
+def test_forced_provider_is_case_insensitive_and_friendly(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "GEMINI")
+    assert [p.name for p in providers.interactive_chain()] == ["gemini-cli"]
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "anthropic")
+    assert [p.name for p in providers.bulk_chain()] == ["anthropic-api"]
+
+
+def test_unknown_or_unset_provider_uses_default_chains(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "bogus")
+    assert len(providers.interactive_chain()) == 5
+    monkeypatch.delenv("DIFFQUIZ_PROVIDER", raising=False)
+    assert providers.interactive_chain()[0].name == "claude-cli"
+    assert providers.bulk_chain()[0].name == "anthropic-api"

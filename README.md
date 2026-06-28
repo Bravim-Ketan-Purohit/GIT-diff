@@ -75,7 +75,8 @@ diffquiz --help
 diffquiz writes questions, grades guesses, and summarises your code using the
 **first available backend** — so it works with whatever coding agent you already
 have. For the live quiz it prefers your agent's CLI; for the one-time index it
-prefers the direct API (cheaper/faster in bulk).
+prefers the direct API (cheaper/faster in bulk). Have several installed? Pin one
+with `DIFFQUIZ_PROVIDER`.
 
 | Backend | How to enable |
 | --- | --- |
@@ -87,6 +88,7 @@ prefers the direct API (cheaper/faster in bulk).
 | **Offline** | Nothing — still works, just reveals the diff without a score |
 
 ```bash
+export DIFFQUIZ_PROVIDER=codex    # optional: force a backend (claude/codex/gemini/opencode/anthropic)
 export ANTHROPIC_API_KEY=sk-...   # optional: enables the direct-API backend
 export DIFFQUIZ_MODEL=...         # optional: pin a model (match your chosen backend)
 ```

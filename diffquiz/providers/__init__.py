@@ -14,6 +14,8 @@ Each router tries providers in order and falls through on failure, returning
 """
 from __future__ import annotations
 
+import os
+
 from .anthropic_api import AnthropicAPIProvider
 from .base import DEFAULT_MODEL, Provider
 from .claude_cli import ClaudeCLIProvider
@@ -23,6 +25,7 @@ from .opencode_cli import OpenCodeProvider
 
 __all__ = [
     "DEFAULT_MODEL",
+    "PROVIDER_NAMES",
     "Provider",
     "interactive_chain",
     "bulk_chain",
@@ -30,9 +33,32 @@ __all__ = [
     "complete_bulk",
 ]
 
+# Canonical backend names a user can pin via DIFFQUIZ_PROVIDER.
+PROVIDER_NAMES = ("claude", "codex", "gemini", "opencode", "anthropic")
+
+# Accept friendly names and full provider .name values.
+_BY_NAME = {
+    "claude": ClaudeCLIProvider, "claude-cli": ClaudeCLIProvider,
+    "codex": CodexCLIProvider, "codex-cli": CodexCLIProvider,
+    "gemini": GeminiCLIProvider, "gemini-cli": GeminiCLIProvider,
+    "opencode": OpenCodeProvider,
+    "anthropic": AnthropicAPIProvider, "api": AnthropicAPIProvider,
+    "anthropic-api": AnthropicAPIProvider,
+}
+
+
+def _forced() -> Provider | None:
+    """The single backend pinned via DIFFQUIZ_PROVIDER, or None if unset/unknown."""
+    cls = _BY_NAME.get(os.environ.get("DIFFQUIZ_PROVIDER", "").strip().lower())
+    return cls() if cls else None
+
 
 def interactive_chain() -> list[Provider]:
-    """Per-diff: zero-config agent CLIs first, direct API as fallback."""
+    """Per-diff: the pinned backend if DIFFQUIZ_PROVIDER is set, else agent CLIs
+    first with the direct API as fallback."""
+    forced = _forced()
+    if forced is not None:
+        return [forced]
     return [
         ClaudeCLIProvider(),
         CodexCLIProvider(),
@@ -43,7 +69,11 @@ def interactive_chain() -> list[Provider]:
 
 
 def bulk_chain() -> list[Provider]:
-    """One-time indexing: batchable API first, agent CLIs as fallback."""
+    """One-time indexing: the pinned backend if DIFFQUIZ_PROVIDER is set, else the
+    batchable API first with agent CLIs as fallback."""
+    forced = _forced()
+    if forced is not None:
+        return [forced]
     return [
         AnthropicAPIProvider(),
         ClaudeCLIProvider(),
