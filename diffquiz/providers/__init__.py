@@ -18,6 +18,8 @@ from .anthropic_api import AnthropicAPIProvider
 from .base import DEFAULT_MODEL, Provider
 from .claude_cli import ClaudeCLIProvider
 from .codex_cli import CodexCLIProvider
+from .gemini_cli import GeminiCLIProvider
+from .opencode_cli import OpenCodeProvider
 
 __all__ = [
     "DEFAULT_MODEL",
@@ -30,13 +32,25 @@ __all__ = [
 
 
 def interactive_chain() -> list[Provider]:
-    """Per-diff: zero-config agent CLI first, direct API as fallback."""
-    return [ClaudeCLIProvider(), CodexCLIProvider(), AnthropicAPIProvider()]
+    """Per-diff: zero-config agent CLIs first, direct API as fallback."""
+    return [
+        ClaudeCLIProvider(),
+        CodexCLIProvider(),
+        GeminiCLIProvider(),
+        OpenCodeProvider(),
+        AnthropicAPIProvider(),
+    ]
 
 
 def bulk_chain() -> list[Provider]:
-    """One-time indexing: batchable API first, agent CLI as fallback."""
-    return [AnthropicAPIProvider(), ClaudeCLIProvider()]
+    """One-time indexing: batchable API first, agent CLIs as fallback."""
+    return [
+        AnthropicAPIProvider(),
+        ClaudeCLIProvider(),
+        CodexCLIProvider(),
+        GeminiCLIProvider(),
+        OpenCodeProvider(),
+    ]
 
 
 def _route(
