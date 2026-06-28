@@ -47,6 +47,7 @@ pip install "diffquiz[ai]"      # + AI scoring & risk flags (recommended)
 
 ```bash
 # One-time: build the codebase graph that grounds every question
+# (LLM-summarises your code; shows a cost estimate before spending anything)
 diffquiz index
 
 # In your project, after your agent has made some changes:
@@ -86,7 +87,7 @@ See [DESIGN.md](DESIGN.md) for the full architecture and phased build.
 
 - [x] Zero-config scoring via your existing Claude Code login (no API key)
 - [x] Codebase **knowledge graph** (`diffquiz index`) that grounds questions in blast radius
-- [ ] LLM-enriched node summaries + one-time, cost-gated indexing
+- [x] LLM-enriched node summaries — one-time, cost-gated, resumable indexing
 - [ ] Incremental graph updates on each diff + untracked-file support
 - [ ] Streak + knowledge-coverage map (`diffquiz map`)
 - [ ] More agent adapters (Codex, Gemini) — see `diffquiz/providers/`

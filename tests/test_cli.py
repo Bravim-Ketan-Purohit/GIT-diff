@@ -2,6 +2,7 @@ import subprocess
 
 from diffquiz import cli, providers
 from diffquiz.graph import store
+from diffquiz.providers.base import Provider
 
 
 def _init_repo(tmp_path):
@@ -23,7 +24,7 @@ class _DummyPrompt:
 
 def test_index_builds_graph(tmp_path):
     repo = _init_repo(tmp_path)
-    assert cli.cmd_index(repo) == 0
+    assert cli.cmd_index(repo, structural=True) == 0
     assert (tmp_path / ".diffquiz" / "graph.json").exists()
     g = store.load_graph(repo)
     assert "mod.py::foo" in g.nodes
@@ -31,7 +32,7 @@ def test_index_builds_graph(tmp_path):
 
 def test_run_round_grounds_prompt_from_graph(tmp_path, monkeypatch):
     repo = _init_repo(tmp_path)
-    cli.cmd_index(repo)
+    cli.cmd_index(repo, structural=True)
     (tmp_path / "mod.py").write_text("def foo():\n    return 2\n")  # create a diff
 
     captured = {}
@@ -46,3 +47,45 @@ def test_run_round_grounds_prompt_from_graph(tmp_path, monkeypatch):
     assert cli._run_round(repo) is True
     assert "<context>" in captured["prompt"]   # grounding block was injected
     assert "foo" in captured["prompt"]          # changed symbol present
+
+
+class _FakeBulk(Provider):
+    name = "fake-bulk"
+
+    def available(self):
+        return True
+
+    def complete(self, prompt, *, model=None, max_tokens=400):
+        return "a one-line summary"
+
+
+def test_index_enriches_with_yes(tmp_path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    monkeypatch.setattr(providers, "bulk_chain", lambda: [_FakeBulk()])
+    assert cli.cmd_index(repo, yes=True) == 0
+    g = store.load_graph(repo)
+    assert any(n.summary for n in g.nodes.values())
+    assert store.load_manifest(repo)["phase"] == "enriched"
+
+
+def test_index_structural_does_not_enrich(tmp_path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    calls = {"n": 0}
+
+    def boom(*a, **k):
+        calls["n"] += 1
+        return "x"
+
+    monkeypatch.setattr(providers, "complete_bulk", boom)
+    assert cli.cmd_index(repo, structural=True) == 0
+    assert calls["n"] == 0
+    g = store.load_graph(repo)
+    assert all(n.summary is None for n in g.nodes.values())
+
+
+def test_index_no_backend_saves_structural(tmp_path, monkeypatch):
+    repo = _init_repo(tmp_path)
+    monkeypatch.setattr(providers, "bulk_chain", lambda: [])  # nothing available
+    assert cli.cmd_index(repo, yes=True) == 0
+    g = store.load_graph(repo)
+    assert all(n.summary is None for n in g.nodes.values())

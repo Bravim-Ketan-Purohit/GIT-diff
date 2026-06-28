@@ -7,11 +7,12 @@ import time
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt
+from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn
+from rich.prompt import Confirm, Prompt
 from rich.syntax import Syntax
 
-from . import ai, git_utils
-from .graph import build, retrieve, store
+from . import ai, git_utils, providers
+from .graph import build, enrich, retrieve, store
 
 console = Console()
 
@@ -71,18 +72,81 @@ def cmd_once(repo: str) -> int:
     return 0
 
 
-def cmd_index(repo: str) -> int:
+def _print_index_summary(repo: str, graph) -> None:
+    m = store.load_manifest(repo)
+    console.print(
+        f"[green]Indexed[/] {m.get('files', 0)} files · "
+        f"[bold]{len(graph.nodes)}[/] nodes · [bold]{len(graph.edges)}[/] edges · "
+        f"[bold]{m.get('enriched', 0)}[/] summarised → [dim].diffquiz/graph.json[/]"
+    )
+
+
+def cmd_index(repo: str, *, structural: bool = False, yes: bool = False, model=None) -> int:
     console.print(Panel(
         f"{BANNER}\n[dim]Indexing the codebase into a graph…[/]",
         expand=False, border_style="cyan",
     ))
     graph = build.build_structural(repo)
-    files = store.load_manifest(repo).get("files", 0)
-    console.print(
-        f"[green]Indexed[/] {files} files · "
-        f"[bold]{len(graph.nodes)}[/] nodes · [bold]{len(graph.edges)}[/] edges "
-        "→ [dim].diffquiz/graph.json[/]"
-    )
+
+    if structural:
+        _print_index_summary(repo, graph)
+        return 0
+
+    est = enrich.estimate_cost(graph)
+    if est.nodes == 0:
+        console.print("[green]Already enriched[/] — nothing new to describe.")
+        _print_index_summary(repo, graph)
+        return 0
+
+    backend = next((p.name for p in providers.bulk_chain() if p.available()), None)
+    if backend is None:
+        console.print(
+            "[yellow]No LLM backend for enrichment[/] — structural graph saved. "
+            "Log in to Claude Code or set ANTHROPIC_API_KEY, then run "
+            "[bold]diffquiz index[/] again."
+        )
+        return 0
+    if backend == "claude-cli":
+        console.print(
+            "[yellow]Heads up:[/] only the Claude CLI is available for bulk indexing — "
+            "it's slow and spends your coding quota. A direct ANTHROPIC_API_KEY is faster."
+        )
+
+    if not yes:
+        proceed = Confirm.ask(
+            f"Describe [bold]{est.nodes}[/] nodes (~{est.est_tokens:,} tokens) "
+            f"via [bold]{backend}[/]?",
+            default=False,
+        )
+        if not proceed:
+            console.print("[dim]Skipped enrichment. Structural graph saved.[/]")
+            return 0
+
+    try:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            TextColumn("{task.completed}/{task.total}"),
+            transient=True,
+            console=console,
+        ) as prog:
+            task = prog.add_task("Describing nodes", total=est.nodes)
+            enrich.enrich(repo, graph, model=model, on_node=lambda *_: prog.advance(task))
+    except KeyboardInterrupt:
+        console.print(
+            "\n[yellow]Interrupted[/] — progress saved. Run "
+            "[bold]diffquiz index[/] again to resume."
+        )
+        return 130
+
+    unenriched = enrich.estimate_cost(graph).nodes
+    if unenriched:
+        console.print(
+            f"[yellow]{unenriched} node(s) could not be summarised[/] — backend "
+            "errors? Re-run [bold]diffquiz index[/] to retry."
+        )
+    _print_index_summary(repo, graph)
     return 0
 
 
@@ -126,7 +190,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     p_index.add_argument(
         "--structural", action="store_true",
-        help="structure only (current default; LLM enrichment lands in Phase 2)",
+        help="structure only — skip LLM enrichment",
+    )
+    p_index.add_argument(
+        "-y", "--yes", action="store_true", help="skip the cost confirmation prompt",
+    )
+    p_index.add_argument(
+        "--model", default=None,
+        help="model for enrichment (default: $DIFFQUIZ_MODEL or haiku)",
     )
 
     args = parser.parse_args(argv)
@@ -141,7 +212,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "watch":
         return cmd_watch(args.repo, args.interval)
     if args.command == "index":
-        return cmd_index(args.repo)
+        return cmd_index(
+            args.repo, structural=args.structural, yes=args.yes, model=args.model
+        )
     # Default to a single round if no subcommand given.
     return cmd_once(args.repo)
 
