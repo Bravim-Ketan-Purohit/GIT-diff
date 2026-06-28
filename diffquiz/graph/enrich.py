@@ -133,7 +133,7 @@ def _source_slice(repo: str, node: Node, cache: dict) -> str:
     if node.path not in cache:
         try:
             cache[node.path] = (Path(repo) / node.path).read_text(
-                encoding="utf-8", errors="ignore"
+                encoding="utf-8", errors="replace"
             ).splitlines()
         except OSError:
             cache[node.path] = []
