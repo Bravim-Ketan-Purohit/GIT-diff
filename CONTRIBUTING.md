@@ -17,6 +17,6 @@ pip install -e ".[ai]"
 ```
 
 ## Ground rules
-- Keep it dependency-light (rich + anthropic only).
-- Everything must still work offline (no API key).
-- One focused PR per change; describe the "why".
+- Keep it dependency-light (rich).
+- Everything must still work within the cli of coding agent (no API key - except for the BYOK).
+- One focused PR per change; describe the "why", and a usecase that you think most devs are using.
