@@ -73,22 +73,27 @@ diffquiz --help
 ### Choose a backend (optional, recommended)
 
 diffquiz writes questions, grades guesses, and summarises your code using the
-**first backend it finds**:
+**first available backend** — so it works with whatever coding agent you already
+have. For the live quiz it prefers your agent's CLI; for the one-time index it
+prefers the direct API (cheaper/faster in bulk).
 
-| Priority | Backend | How to enable |
-| --- | --- | --- |
-| 1 | **Claude Code** — ideal for the live quiz | Just be logged in; `claude -p` is used under the hood (no key, tools disabled) |
-| 2 | **Anthropic API** — ideal for the one-time index | `export ANTHROPIC_API_KEY=sk-...` |
-| 3 | **Offline** | Nothing — it still works, just without the AI scorecard |
+| Backend | How to enable |
+| --- | --- |
+| **Claude Code** (preferred) | Be logged in — `claude -p` runs under the hood (no key, tools disabled) |
+| **OpenAI Codex** | `codex login` — runs `codex exec` in a read-only sandbox |
+| **Gemini CLI** | Install + authenticate — runs `gemini -p` |
+| **OpenCode** | `opencode auth` — runs `opencode run` |
+| **Anthropic API** | `export ANTHROPIC_API_KEY=sk-...` — direct API; best for `index` |
+| **Offline** | Nothing — still works, just reveals the diff without a score |
 
 ```bash
-export ANTHROPIC_API_KEY=sk-...          # optional: enables the API backend
-export DIFFQUIZ_MODEL=claude-sonnet-4-6  # optional: override the default model
+export ANTHROPIC_API_KEY=sk-...   # optional: enables the direct-API backend
+export DIFFQUIZ_MODEL=...         # optional: pin a model (match your chosen backend)
 ```
 
 > **Tip:** for the one-time `diffquiz index`, a direct `ANTHROPIC_API_KEY` is far
-> faster/cheaper than the CLI (which cold-boots per node). For the live quiz, your
-> Claude Code login is perfect.
+> faster/cheaper than any CLI (which cold-boots per node). For the live quiz, your
+> agent's CLI is perfect.
 
 ### Build the codebase graph (one-time)
 
@@ -150,8 +155,8 @@ See [DESIGN.md](DESIGN.md) for the full architecture and phased build.
 - [x] Codebase **knowledge graph** (`diffquiz index`) that grounds questions in blast radius
 - [x] LLM-enriched node summaries — one-time, cost-gated, resumable indexing
 - [x] Incremental graph updates on each diff + untracked-file support
+- [x] Multiple agent backends — Claude Code, OpenAI Codex, Gemini CLI, OpenCode, Anthropic API
 - [ ] Streak + knowledge-coverage map (`diffquiz map`)
-- [ ] More agent adapters (Codex, Gemini) — see `diffquiz/providers/`
 - [ ] `docs/demo.gif` — record the first real session
 
 Got an idea? [Open an issue](https://github.com/Bravim-Ketan-Purohit/GIT-diff/issues) — see [CONTRIBUTING](CONTRIBUTING.md).

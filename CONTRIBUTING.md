@@ -79,8 +79,9 @@ The phased plan lives in [DESIGN.md](DESIGN.md). **M1–M3 (the core product) ar
 done**; below is what's open. Open an issue to claim one before starting.
 
 ### Good first issues (small, self-contained)
-- **Another agent adapter** — implement `codex exec` (or Gemini) in
-  `diffquiz/providers/`; `codex_cli.py` is a ready stub. Keep it on a no-tools leash.
+- **Another agent adapter** — Claude Code, Codex, Gemini, and OpenCode ship today;
+  add the next one (Cursor, Aider, Amp, …) by copying any `diffquiz/providers/*_cli.py`.
+  Keep it read-only / no-tools and degrade to `None` on any failure.
 - **A new question or grading style** in `diffquiz/ai.py`.
 - **Editor/multiplexer recipes** (zellij, wezterm, screen) for the split-pane view.
 - **`docs/demo.gif`** — record a real session (this is the #1 thing that earns stars).
