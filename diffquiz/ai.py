@@ -15,6 +15,18 @@ from . import providers
 # Re-exported for back-compat; the source of truth is providers.DEFAULT_MODEL.
 DEFAULT_MODEL = providers.DEFAULT_MODEL
 
+# Delimiters we wrap untrusted content in; neutralised below so repo/agent
+# content can't close a block and inject instructions.
+_DELIMS = ("diff", "context", "prediction")
+
+
+def _fence(content: str, limit: int) -> str:
+    """Truncate and stop content from breaking out of our prompt delimiters."""
+    out = content[:limit]
+    for tag in _DELIMS:
+        out = out.replace(f"</{tag}>", f"<\\/{tag}>")
+    return out
+
 
 def _context_block(grounding: str | None) -> str:
     if not grounding:
@@ -22,7 +34,7 @@ def _context_block(grounding: str | None) -> str:
     return (
         "Use this map of how the changed code connects to the rest of the repo "
         "to ask about ripple effects or intent, not just the literal change:\n"
-        f"<context>\n{grounding[:4000]}\n</context>\n\n"
+        f"<context>\n{_fence(grounding, 4000)}\n</context>\n\n"
     )
 
 
@@ -48,7 +60,7 @@ def generate_question(
         "and why — WITHOUT revealing the answer. Focus on intent, risk, or a "
         "non-obvious consequence. Output only the question.\n\n"
         f"{_context_block(grounding)}"
-        f"<diff>\n{diff[:6000]}\n</diff>"
+        f"<diff>\n{_fence(diff, 6000)}\n</diff>"
     )
     return providers.complete_interactive(prompt, model=DEFAULT_MODEL, max_tokens=150) or offline
 
@@ -69,7 +81,7 @@ def grade_prediction(
         "WATCH: any bug, security, or correctness risk you see in the diff "
         "(skip if genuinely clean). Be concrete; cite the line/symbol.\n\n"
         f"{_context_block(grounding)}"
-        f"<prediction>\n{prediction}\n</prediction>\n\n"
-        f"<diff>\n{diff[:8000]}\n</diff>"
+        f"<prediction>\n{_fence(prediction, 2000)}\n</prediction>\n\n"
+        f"<diff>\n{_fence(diff, 8000)}\n</diff>"
     )
     return providers.complete_interactive(prompt, model=DEFAULT_MODEL, max_tokens=400)

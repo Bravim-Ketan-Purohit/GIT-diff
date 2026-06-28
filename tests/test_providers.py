@@ -66,3 +66,20 @@ def test_claude_cli_nonzero_exit_is_none(monkeypatch):
     monkeypatch.setattr(shutil, "which", lambda _: "/x/claude")
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Proc(1, ""))
     assert ClaudeCLIProvider().complete("q") is None
+
+
+def test_claude_cli_rejects_flaglike_model(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, *a, **k):
+        captured["cmd"] = list(cmd)
+        return _Proc(0, json.dumps({"result": "ok"}))
+
+    monkeypatch.setattr(shutil, "which", lambda _: "/x/claude")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    ClaudeCLIProvider().complete("q", model="--dangerously-skip-permissions")
+    assert "--model" not in captured["cmd"]   # flag-like value rejected
+
+    ClaudeCLIProvider().complete("q", model="claude-haiku-4-5")
+    assert "--model" in captured["cmd"] and "claude-haiku-4-5" in captured["cmd"]
