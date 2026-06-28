@@ -22,7 +22,7 @@ def build_structural(repo: str) -> Graph:
         if extractor is None:
             continue
         try:
-            source = (Path(repo) / rel).read_text(encoding="utf-8", errors="ignore")
+            source = (Path(repo) / rel).read_text(encoding="utf-8", errors="replace")
         except OSError:
             continue
         nodes, edges = extractor.extract(rel, source)

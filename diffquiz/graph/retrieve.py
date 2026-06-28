@@ -36,16 +36,32 @@ def changed_line_ranges(diff: str) -> dict[str, list[tuple[int, int]]]:
 
 
 def changed_symbols(graph: Graph, diff: str) -> list[str]:
-    """Node ids whose span overlaps a changed region of the diff."""
+    """Node ids whose span overlaps a changed region of the diff.
+
+    Indexes nodes by file, then lets the most specific (smallest-span) node claim
+    its changed lines first, so an enclosing node (e.g. the file) is only picked
+    for lines no smaller node covers. Same result as a per-line scan, far cheaper.
+    """
+    by_file: dict[str, list] = {}
+    for node in graph.nodes.values():
+        by_file.setdefault(node.path, []).append(node)
+
     ids: list[str] = []
     seen: set[str] = set()
     for path, line_ranges in changed_line_ranges(diff).items():
+        changed: set[int] = set()
         for start, end in line_ranges:
-            for line in range(start, end + 1):
-                node = graph.node_at(path, line)
-                if node and node.id not in seen:
+            changed.update(range(start, end + 1))
+        for node in sorted(by_file.get(path, []), key=lambda n: n.span[1] - n.span[0]):
+            lo, hi = node.span
+            covered = {ln for ln in changed if lo <= ln <= hi}
+            if covered:
+                if node.id not in seen:
                     seen.add(node.id)
                     ids.append(node.id)
+                changed -= covered
+            if not changed:
+                break
     return ids
 
 
