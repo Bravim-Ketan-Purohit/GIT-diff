@@ -26,7 +26,7 @@ class PythonExtractor(LanguageExtractor):
                 name=path.rsplit("/", 1)[-1],
                 path=path,
                 span=(1, max(len(lines), 1)),
-                content_hash=_sha1(source),
+                content_hash=_content_hash(source),
             )
         ]
         edges: list[Edge] = []
@@ -97,7 +97,7 @@ class _Visitor:
 
     def _hash(self, stmt) -> str:
         start, end = _span(stmt)
-        return _sha1("\n".join(self.lines[start - 1 : end]))
+        return _content_hash("\n".join(self.lines[start - 1 : end]))
 
 
 def _span(stmt) -> tuple[int, int]:
@@ -139,5 +139,5 @@ def _called_names(fn) -> list[str]:
     return names
 
 
-def _sha1(text: str) -> str:
-    return "sha1:" + hashlib.sha1(text.encode("utf-8", "ignore")).hexdigest()
+def _content_hash(text: str) -> str:
+    return "sha256:" + hashlib.sha256(text.encode("utf-8", "ignore")).hexdigest()

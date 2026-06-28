@@ -6,8 +6,6 @@ keep it on a no-tools leash) is a small, self-contained contribution.
 """
 from __future__ import annotations
 
-import shutil
-
 from .base import Provider
 
 
@@ -15,7 +13,9 @@ class CodexCLIProvider(Provider):
     name = "codex-cli"
 
     def available(self) -> bool:
-        return shutil.which("codex") is not None
+        # Not a usable backend yet, so it stays out of routing. Once complete()
+        # is implemented, switch to `shutil.which("codex") is not None`.
+        return False
 
     def complete(self, prompt, *, model=None, max_tokens=400):
-        return None  # not implemented yet — router falls through
+        return None  # not implemented yet

@@ -8,10 +8,15 @@ caller degrades to the next provider (or offline).
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 
 from .base import Provider
+
+# Model names go straight into the CLI argv; require a leading alphanumeric so a
+# value like "--dangerously-skip-permissions" can't be smuggled in as a flag.
+_MODEL_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
 class ClaudeCLIProvider(Provider):
@@ -25,11 +30,11 @@ class ClaudeCLIProvider(Provider):
         if not self.available():
             return None
         cmd = ["claude", "-p", prompt, "--output-format", "json", "--tools", ""]
-        if model:
+        if model and _MODEL_RE.match(model):
             cmd += ["--model", model]
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        except Exception:
+        except (OSError, subprocess.SubprocessError):
             return None
         if proc.returncode != 0:
             return None

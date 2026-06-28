@@ -196,6 +196,9 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
 
+    if args.command == "watch" and args.interval <= 0:
+        parser.error("--interval must be greater than 0")
+
     if not git_utils.is_git_repo(args.repo):
         console.print(f"[red]Not a git repo:[/] {args.repo}")
         return 1
