@@ -14,29 +14,94 @@ Each router tries providers in order and falls through on failure, returning
 """
 from __future__ import annotations
 
+import os
+
 from .anthropic_api import AnthropicAPIProvider
 from .base import DEFAULT_MODEL, Provider
 from .claude_cli import ClaudeCLIProvider
 from .codex_cli import CodexCLIProvider
+from .gemini_cli import GeminiCLIProvider
+from .opencode_cli import OpenCodeProvider
 
 __all__ = [
     "DEFAULT_MODEL",
+    "PROVIDER_NAMES",
     "Provider",
     "interactive_chain",
     "bulk_chain",
     "complete_interactive",
     "complete_bulk",
+    "provider_warning",
 ]
+
+# Canonical backend names a user can pin via DIFFQUIZ_PROVIDER.
+PROVIDER_NAMES = ("claude", "codex", "gemini", "opencode", "anthropic")
+
+# Accept friendly names and full provider .name values.
+_BY_NAME = {
+    "claude": ClaudeCLIProvider, "claude-cli": ClaudeCLIProvider,
+    "codex": CodexCLIProvider, "codex-cli": CodexCLIProvider,
+    "gemini": GeminiCLIProvider, "gemini-cli": GeminiCLIProvider,
+    "opencode": OpenCodeProvider,
+    "anthropic": AnthropicAPIProvider, "api": AnthropicAPIProvider,
+    "anthropic-api": AnthropicAPIProvider,
+}
+
+
+def _forced() -> Provider | None:
+    """The single backend pinned via DIFFQUIZ_PROVIDER, or None if unset/unknown."""
+    cls = _BY_NAME.get(os.environ.get("DIFFQUIZ_PROVIDER", "").strip().lower())
+    return cls() if cls else None
+
+
+def provider_warning() -> str | None:
+    """A message if DIFFQUIZ_PROVIDER is set but won't work, else None."""
+    name = os.environ.get("DIFFQUIZ_PROVIDER", "").strip()
+    if not name:
+        return None
+    if name.lower() not in _BY_NAME:
+        return (
+            f"DIFFQUIZ_PROVIDER={name!r} isn't a known backend "
+            f"({', '.join(PROVIDER_NAMES)}); using auto-detect instead."
+        )
+    forced = _forced()
+    if forced is not None and not forced.available():
+        return (
+            f"DIFFQUIZ_PROVIDER={name!r} is set, but that backend isn't available "
+            "here (not installed / not logged in / no key) — diffquiz will run "
+            "without scoring until it's reachable."
+        )
+    return None
 
 
 def interactive_chain() -> list[Provider]:
-    """Per-diff: zero-config agent CLI first, direct API as fallback."""
-    return [ClaudeCLIProvider(), CodexCLIProvider(), AnthropicAPIProvider()]
+    """Per-diff: the pinned backend if DIFFQUIZ_PROVIDER is set, else agent CLIs
+    first with the direct API as fallback."""
+    forced = _forced()
+    if forced is not None:
+        return [forced]
+    return [
+        ClaudeCLIProvider(),
+        CodexCLIProvider(),
+        GeminiCLIProvider(),
+        OpenCodeProvider(),
+        AnthropicAPIProvider(),
+    ]
 
 
 def bulk_chain() -> list[Provider]:
-    """One-time indexing: batchable API first, agent CLI as fallback."""
-    return [AnthropicAPIProvider(), ClaudeCLIProvider()]
+    """One-time indexing: the pinned backend if DIFFQUIZ_PROVIDER is set, else the
+    batchable API first with agent CLIs as fallback."""
+    forced = _forced()
+    if forced is not None:
+        return [forced]
+    return [
+        AnthropicAPIProvider(),
+        ClaudeCLIProvider(),
+        CodexCLIProvider(),
+        GeminiCLIProvider(),
+        OpenCodeProvider(),
+    ]
 
 
 def _route(

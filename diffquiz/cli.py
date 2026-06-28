@@ -12,7 +12,7 @@ from rich.prompt import Confirm, Prompt
 from rich.syntax import Syntax
 
 from . import ai, git_utils, providers
-from .graph import build, enrich, retrieve, store
+from .graph import build, enrich, retrieve, store, update
 
 console = Console()
 
@@ -20,10 +20,14 @@ BANNER = "[bold cyan]diffquiz[/]  [dim]· predict before you read[/]"
 
 
 def _grounding_for(repo: str, diff: str) -> str | None:
-    """Retrieve a grounding subgraph for the diff, if a graph has been built."""
+    """Refresh the graph from the current diff, then ground on it (if one exists)."""
     graph = store.load_graph(repo)
     if graph is None:
         return None
+    # Re-describe changed nodes live only with the fast API backend; with the CLI
+    # we keep the refresh structural so a watch session never drains coding quota.
+    fast = any(p.name == "anthropic-api" and p.available() for p in providers.bulk_chain())
+    update.update_from_diff(repo, graph, reenrich=fast)
     ids = retrieve.changed_symbols(graph, diff)
     return retrieve.subgraph_for(graph, ids) or None
 
@@ -208,6 +212,10 @@ def main(argv: list[str] | None = None) -> int:
     if not git_utils.is_git_repo(args.repo):
         console.print(f"[red]Not a git repo:[/] {args.repo}")
         return 1
+
+    warning = providers.provider_warning()
+    if warning:
+        console.print(f"[yellow]⚠ {warning}[/]")
 
     if args.command == "watch":
         return cmd_watch(args.repo, args.interval)
