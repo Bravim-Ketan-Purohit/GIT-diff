@@ -5,6 +5,9 @@ import subprocess
 from diffquiz import providers
 from diffquiz.providers.base import Provider
 from diffquiz.providers.claude_cli import ClaudeCLIProvider
+from diffquiz.providers.codex_cli import CodexCLIProvider
+from diffquiz.providers.gemini_cli import GeminiCLIProvider
+from diffquiz.providers.opencode_cli import OpenCodeProvider
 
 
 class _Fake(Provider):
@@ -83,3 +86,121 @@ def test_claude_cli_rejects_flaglike_model(monkeypatch):
 
     ClaudeCLIProvider().complete("q", model="claude-haiku-4-5")
     assert "--model" in captured["cmd"] and "claude-haiku-4-5" in captured["cmd"]
+
+
+# --- codex / gemini / opencode adapters -----------------------------------
+
+def test_codex_reads_final_message_file(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda _: "/x/codex")
+
+    def fake_run(cmd, *a, **k):
+        path = cmd[cmd.index("-o") + 1]   # codex writes the final message here
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("  codex answer  ")
+        return _Proc(0, "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    assert CodexCLIProvider().complete("q") == "codex answer"
+
+
+def test_codex_nonzero_is_none(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda _: "/x/codex")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Proc(1, ""))
+    assert CodexCLIProvider().complete("q") is None
+
+
+def test_codex_unavailable(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+    assert CodexCLIProvider().complete("q") is None
+
+
+def test_gemini_returns_stdout(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda _: "/x/gemini")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Proc(0, "gemini answer\n"))
+    assert GeminiCLIProvider().complete("q") == "gemini answer"
+
+
+def test_gemini_unavailable(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+    assert GeminiCLIProvider().complete("q") is None
+
+
+def test_opencode_strips_ansi(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda _: "/x/opencode")
+    monkeypatch.setattr(
+        subprocess, "run", lambda *a, **k: _Proc(0, "\x1b[0mopencode answer\x1b[0m\n")
+    )
+    assert OpenCodeProvider().complete("q") == "opencode answer"
+
+
+def test_opencode_nonzero_is_none(monkeypatch):
+    monkeypatch.setattr(shutil, "which", lambda _: "/x/opencode")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _Proc(1, ""))
+    assert OpenCodeProvider().complete("q") is None
+
+
+def test_non_claude_adapters_ignore_claude_default_model(monkeypatch):
+    captured = {}
+
+    def fake_run(cmd, *a, **k):
+        captured["cmd"] = list(cmd)
+        if "-o" in cmd:
+            with open(cmd[cmd.index("-o") + 1], "w", encoding="utf-8") as f:
+                f.write("x")
+        return _Proc(0, "x")
+
+    monkeypatch.setattr(shutil, "which", lambda _: "/x/bin")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    GeminiCLIProvider().complete("q", model="claude-haiku-4-5-20251001")
+    assert "-m" not in captured["cmd"]   # our Claude default isn't sent to Gemini
+
+    GeminiCLIProvider().complete("q", model="gemini-2.5-pro")
+    assert "-m" in captured["cmd"] and "gemini-2.5-pro" in captured["cmd"]
+
+
+# --- DIFFQUIZ_PROVIDER selector -------------------------------------------
+
+def test_forced_provider_pins_both_chains(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "codex")
+    assert [p.name for p in providers.interactive_chain()] == ["codex-cli"]
+    assert [p.name for p in providers.bulk_chain()] == ["codex-cli"]
+
+
+def test_forced_provider_is_case_insensitive_and_friendly(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "GEMINI")
+    assert [p.name for p in providers.interactive_chain()] == ["gemini-cli"]
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "anthropic")
+    assert [p.name for p in providers.bulk_chain()] == ["anthropic-api"]
+
+
+def test_unknown_or_unset_provider_uses_default_chains(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "bogus")
+    assert len(providers.interactive_chain()) == 5
+    monkeypatch.delenv("DIFFQUIZ_PROVIDER", raising=False)
+    assert providers.interactive_chain()[0].name == "claude-cli"
+    assert providers.bulk_chain()[0].name == "anthropic-api"
+
+
+def test_provider_warning_none_when_unset(monkeypatch):
+    monkeypatch.delenv("DIFFQUIZ_PROVIDER", raising=False)
+    assert providers.provider_warning() is None
+
+
+def test_provider_warning_for_unknown_name(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "geminii")
+    w = providers.provider_warning()
+    assert w and "isn't a known backend" in w
+
+
+def test_provider_warning_for_known_but_unavailable(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "claude")
+    monkeypatch.setattr(shutil, "which", lambda _: None)   # claude CLI "not installed"
+    w = providers.provider_warning()
+    assert w and "isn't available" in w
+
+
+def test_provider_warning_silent_when_available(monkeypatch):
+    monkeypatch.setenv("DIFFQUIZ_PROVIDER", "claude")
+    monkeypatch.setattr(shutil, "which", lambda _: "/x/claude")
+    assert providers.provider_warning() is None
