@@ -36,26 +36,95 @@ The danger isn't that the AI is wrong. It's that **you stopped paying attention.
 
 You learn the codebase as it's being built, and you stop merging code you never read.
 
-## Install
+## Setup
+
+### Requirements
+
+- **Python 3.9+**
+- **git** (diffquiz reads your repo through git)
+- *Optional, for AI scoring & graph enrichment* — either **Claude Code** already
+  logged in (zero config, no key), or an **`ANTHROPIC_API_KEY`**. Without either,
+  diffquiz still runs; it just reveals the diff without a score.
+
+### Install
+
+> Not on PyPI yet — install from source. (`pip install diffquiz` lands once published.)
+
+With **[uv](https://docs.astral.sh/uv/)** (recommended):
 
 ```bash
-pip install diffquiz            # core
-pip install "diffquiz[ai]"      # + AI scoring & risk flags (recommended)
+git clone https://github.com/Bravim-Ketan-Purohit/GIT-diff
+cd GIT-diff
+uv venv --python 3.12
+uv pip install -e ".[ai]"        # core + AI scoring; drop [ai] for offline-only
+uv run diffquiz --help
 ```
 
-## Quickstart
+Or with plain `pip`:
 
 ```bash
-# One-time: build the codebase graph that grounds every question
-# (LLM-summarises your code; shows a cost estimate before spending anything)
-diffquiz index
-
-# In your project, after your agent has made some changes:
-diffquiz once
-
-# Or run it live in a pane and get quizzed on every change:
-diffquiz watch
+git clone https://github.com/Bravim-Ketan-Purohit/GIT-diff
+cd GIT-diff
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e ".[ai]"
+diffquiz --help
 ```
+
+### Choose a backend (optional, recommended)
+
+diffquiz writes questions, grades guesses, and summarises your code using the
+**first available backend** — so it works with whatever coding agent you already
+have. For the live quiz it prefers your agent's CLI; for the one-time index it
+prefers the direct API (cheaper/faster in bulk). Have several installed? Pin one
+with `DIFFQUIZ_PROVIDER`.
+
+| Backend | How to enable |
+| --- | --- |
+| **Claude Code** (preferred) | Be logged in — `claude -p` runs under the hood (no key, tools disabled) |
+| **OpenAI Codex** | `codex login` — runs `codex exec` in a read-only sandbox |
+| **Gemini CLI** | Install + authenticate — runs `gemini -p` |
+| **OpenCode** | `opencode auth` — runs `opencode run` |
+| **Anthropic API** | `export ANTHROPIC_API_KEY=sk-...` — direct API; best for `index` |
+| **Offline** | Nothing — still works, just reveals the diff without a score |
+
+```bash
+export DIFFQUIZ_PROVIDER=codex    # optional: force a backend (claude/codex/gemini/opencode/anthropic)
+export ANTHROPIC_API_KEY=sk-...   # optional: enables the direct-API backend
+export DIFFQUIZ_MODEL=...         # optional: pin a model (match your chosen backend)
+```
+
+> **Tip:** for the one-time `diffquiz index`, a direct `ANTHROPIC_API_KEY` is far
+> faster/cheaper than any CLI (which cold-boots per node). For the live quiz, your
+> agent's CLI is perfect.
+
+### Build the codebase graph (one-time)
+
+From inside the project you want to study:
+
+```bash
+cd /path/to/your/project
+diffquiz index               # parse your code, then LLM-summarise it (asks before spending)
+diffquiz index --structural  # or: structure only — no LLM, zero tokens
+```
+
+This writes a graph under `.diffquiz/` that grounds every question in how your
+code actually connects. It's **cost-gated** (you confirm before any spend),
+**resumable**, and re-indexing only re-describes what changed.
+
+> Add `.diffquiz/` to your project's `.gitignore`. (diffquiz already ignores it
+> internally, but you don't want the graph in version control.)
+
+## Usage
+
+```bash
+diffquiz once            # one quiz round on the current uncommitted changes
+diffquiz watch           # quiz on every change as your agent works
+diffquiz watch -i 5      # ...polling every 5s (default: 3)
+diffquiz -C /path once   # operate on a repo elsewhere
+```
+
+The graph refreshes automatically before each round, so questions always reflect
+the code as it is right now — including brand-new files.
 
 ### Side-by-side with your agent (tmux)
 
@@ -64,18 +133,17 @@ diffquiz watch
 tmux new-session \; split-window -h -p 33 'diffquiz watch'
 ```
 
-### Scoring & risk flags (zero-config)
+### Command reference
 
-`diffquiz` writes questions and grades guesses using the first backend it finds:
-
-1. **Claude Code, if you're logged in** — no API key needed. It calls `claude -p`
-   under the hood using your existing session (tools disabled, so it only answers).
-2. **`ANTHROPIC_API_KEY`**, if set — a direct API call.
-3. **Offline** — neither available: it just reveals the diff after your guess.
-
-```bash
-export DIFFQUIZ_MODEL=claude-sonnet-4-6  # optional: sharper, slower than the default
-```
+| Command | What it does |
+| --- | --- |
+| `diffquiz index` | Build/refresh the graph (LLM-enriched, cost-gated) |
+| `diffquiz index --structural` | Structure only — no LLM, free |
+| `diffquiz index --yes` | Skip the cost confirmation |
+| `diffquiz index --model <id>` | Model to use for enrichment |
+| `diffquiz once` | One quiz round on the current diff |
+| `diffquiz watch [-i SECS]` | Quiz on each change (default every 3s) |
+| `-C, --repo <path>` | Run against a repo other than the current directory |
 
 ## Why predict-first works
 
@@ -88,9 +156,9 @@ See [DESIGN.md](DESIGN.md) for the full architecture and phased build.
 - [x] Zero-config scoring via your existing Claude Code login (no API key)
 - [x] Codebase **knowledge graph** (`diffquiz index`) that grounds questions in blast radius
 - [x] LLM-enriched node summaries — one-time, cost-gated, resumable indexing
-- [ ] Incremental graph updates on each diff + untracked-file support
+- [x] Incremental graph updates on each diff + untracked-file support
+- [x] Multiple agent backends — Claude Code, OpenAI Codex, Gemini CLI, OpenCode, Anthropic API
 - [ ] Streak + knowledge-coverage map (`diffquiz map`)
-- [ ] More agent adapters (Codex, Gemini) — see `diffquiz/providers/`
 - [ ] `docs/demo.gif` — record the first real session
 
 Got an idea? [Open an issue](https://github.com/Bravim-Ketan-Purohit/GIT-diff/issues) — see [CONTRIBUTING](CONTRIBUTING.md).

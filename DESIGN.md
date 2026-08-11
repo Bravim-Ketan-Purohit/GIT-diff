@@ -239,7 +239,9 @@ diffquiz/
     base.py           # Provider interface
     anthropic_api.py  # direct API (bulk)
     claude_cli.py     # claude -p adapter (interactive)
-    codex_cli.py      # stub — good-first-issue
+    codex_cli.py      # codex exec adapter
+    gemini_cli.py     # gemini -p adapter
+    opencode_cli.py   # opencode run adapter
 ```
 
 ---

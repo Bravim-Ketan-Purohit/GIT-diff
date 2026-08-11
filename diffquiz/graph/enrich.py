@@ -98,6 +98,31 @@ def enrich(repo, graph, *, model=None, on_node=None, save_every=_SAVE_EVERY) -> 
     return graph
 
 
+def enrich_some(repo, graph, nodes, *, model=None, on_node=None) -> None:
+    """Enrich a specific set of nodes in place (incremental; caller persists).
+
+    Bounded to the given nodes — used by the live update path so a per-round
+    refresh only ever describes the handful of nodes that actually changed.
+    """
+    model = model or providers.DEFAULT_MODEL
+    cache: dict[str, list[str]] = {}
+    for node in sorted(nodes, key=lambda n: _ORDER.get(n.kind, 0)):
+        if not needs_summary(node):
+            continue
+        summary = providers.complete_bulk(
+            _prompt_for(graph, node, repo, cache),
+            model=model,
+            max_tokens=_MAX_OUTPUT_TOKENS,
+        )
+        summary = _clean_summary(summary) if summary else summary
+        if summary:
+            node.summary = summary
+            node.summary_model = model
+            node.last_indexed = _now()
+        if on_node is not None:
+            on_node(node, summary)
+
+
 # --- prompt construction --------------------------------------------------
 
 # The agent CLI is agentic by default; without a firm, self-contained prompt it
