@@ -1,0 +1,244 @@
+@import "tailwindcss";
+
+/* ----------------------------------------------------------------------------
+   diffquiz — design tokens
+   Dark terminal aesthetic: near-black canvas, JetBrains Mono, cyan/green glow.
+   The accent colours mirror the real CLI panels (cyan banner, yellow question,
+   green diff reveal, magenta scorecard) so the site feels like the tool.
+---------------------------------------------------------------------------- */
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-jetbrains-mono);
+
+  --color-bg: #05070a;
+  --color-panel: #0a0e15;
+  --color-line: #161d2b;
+  --color-ink: #e6edf3;
+  --color-muted: #8a96a8;
+
+  --color-brand: #22d3ee; /* cyan-400  · banner / primary */
+  --color-acid: #4ade80; /* green-400 · the "reveal" / correct */
+  --color-warn: #fbbf24; /* amber-400 · "your move" question */
+  --color-magenta: #e879f9; /* fuchsia   · scorecard */
+}
+
+:root {
+  color-scheme: dark;
+
+  /* Shared VIBGYOR spectrum, reused across the app (text clips, buttons, glows). */
+  --spectrum: linear-gradient(
+    100deg,
+    #a78bfa 0%,
+    #818cf8 14%,
+    #60a5fa 28%,
+    #22d3ee 43%,
+    #34d399 58%,
+    #fcd34d 74%,
+    #fb923c 88%,
+    #fb7185 100%
+  );
+}
+
+* {
+  border-color: var(--color-line);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--color-brand) 35%, transparent);
+  color: #fff;
+}
+
+/* Pointer cursor on buttons (native buttons default to an arrow). */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+/* Visible, on-brand focus ring for keyboard navigation. */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Thin, dark scrollbar that suits the terminal look. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #1c2433;
+  border-radius: 9999px;
+  border: 2px solid var(--color-bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2a3447;
+}
+
+/* ----------------------------------------------------------------------------
+   Backgrounds
+---------------------------------------------------------------------------- */
+
+/* Faint engineering grid. Pair with .mask-radial to fade it toward the edges. */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(120, 140, 170, 0.07) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(120, 140, 170, 0.07) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+.bg-dots {
+  background-image: radial-gradient(rgba(120, 140, 170, 0.16) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.mask-radial {
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 35%, transparent 80%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 35%, transparent 80%);
+}
+
+.mask-radial-center {
+  -webkit-mask-image: radial-gradient(ellipse 55% 55% at 50% 50%, #000 30%, transparent 75%);
+  mask-image: radial-gradient(ellipse 55% 55% at 50% 50%, #000 30%, transparent 75%);
+}
+
+/* ----------------------------------------------------------------------------
+   Text / surface effects
+---------------------------------------------------------------------------- */
+.text-glow {
+  text-shadow: 0 0 18px color-mix(in oklab, currentColor 45%, transparent);
+}
+
+.terminal-shadow {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 30px 80px -20px rgba(0, 0, 0, 0.8),
+    0 0 60px -25px rgba(34, 211, 238, 0.35);
+}
+
+.card-glow:hover {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 20px 60px -25px rgba(255, 255, 255, 0.12);
+}
+
+/* Subtle CRT scanlines for terminal surfaces. */
+.scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.025) 0px,
+    rgba(255, 255, 255, 0.025) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+  border-radius: inherit;
+}
+
+/* Refined full-spectrum (VIBGYOR) sweep — muted 300/400 tones so it reads
+   modern and a little playful, not a garish rainbow. Pans slowly for life. */
+.gradient-text {
+  background: var(--spectrum);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gradient-pan 9s ease-in-out infinite alternate;
+}
+
+/* Static spectrum text — eyebrows, the logo wordmark, key highlights. */
+.spectrum-text {
+  background: var(--spectrum);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Spectrum-filled surface — primary buttons. Brighter cool→warm stops keep dark
+   text readable; the fill slides on hover. */
+.spectrum-bg {
+  background-image: linear-gradient(100deg, #818cf8, #22d3ee, #34d399, #fcd34d);
+  background-size: 180% auto;
+  background-position: 0% center;
+  transition: background-position 0.5s ease, transform 0.2s ease, box-shadow 0.3s ease;
+}
+.spectrum-bg:hover {
+  background-position: 100% center;
+}
+
+@keyframes gradient-pan {
+  to {
+    background-position: 100% center;
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   Animations
+---------------------------------------------------------------------------- */
+.animate-blink {
+  animation: blink 1.05s step-end infinite;
+}
+.animate-float {
+  animation: float 7s ease-in-out infinite;
+}
+.animate-shimmer {
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

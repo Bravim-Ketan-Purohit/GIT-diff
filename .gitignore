@@ -7,3 +7,4 @@ dist/
 venv/
 .diffquiz/
 .DS_Store
+.gstack/
