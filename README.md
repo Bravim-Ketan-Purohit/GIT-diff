@@ -4,7 +4,7 @@
 
 **Predict the diff before you read what your AI just wrote.**
 
-*A terminal companion that quizzes you on every change your coding agent makes — so you actually understand your own codebase instead of rubber-stamping it.*
+_A terminal companion that quizzes you on every change your coding agent makes — so you actually understand your own codebase instead of rubber-stamping it._
 
 [![PyPI](https://img.shields.io/badge/pip%20install-diffquiz-3670A0?style=flat-square&logo=python&logoColor=white)](https://github.com/Bravim-Ketan-Purohit/GIT-diff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
@@ -20,7 +20,7 @@
 
 ## The problem
 
-AI agents write code faster than you can read it. So you don't read it. You skim the green squares, hit accept, and three weeks later you can't answer basic questions about your own project — *what does this function return, where is this used, why is it built this way.*
+AI agents write code faster than you can read it. So you don't read it. You skim the green squares, hit accept, and three weeks later you can't answer basic questions about your own project — _what does this function return, where is this used, why is it built this way._
 
 The danger isn't that the AI is wrong. It's that **you stopped paying attention.**
 
@@ -30,7 +30,7 @@ The danger isn't that the AI is wrong. It's that **you stopped paying attention.
 
 1. Run `diffquiz watch` in a split terminal pane next to your coding agent.
 2. Your agent edits the repo. `diffquiz` notices the new changes.
-3. **Before showing you the diff,** it asks: *"`auth.py` changed — what do you think changed, and why?"*
+3. **Before showing you the diff,** it asks: _"`auth.py` changed — what do you think changed, and why?"_
 4. You type a one-line prediction.
 5. It reveals the real diff, then (with an API key) scores your guess and **flags any bugs or risks it spots.**
 
@@ -42,7 +42,7 @@ You learn the codebase as it's being built, and you stop merging code you never 
 
 - **Python 3.9+**
 - **git** (diffquiz reads your repo through git)
-- *Optional, for AI scoring & graph enrichment* — either **Claude Code** already
+- _Optional, for AI scoring & graph enrichment_ — either **Claude Code** already
   logged in (zero config, no key), or an **`ANTHROPIC_API_KEY`**. Without either,
   diffquiz still runs; it just reveals the diff without a score.
 
@@ -78,14 +78,14 @@ have. For the live quiz it prefers your agent's CLI; for the one-time index it
 prefers the direct API (cheaper/faster in bulk). Have several installed? Pin one
 with `DIFFQUIZ_PROVIDER`.
 
-| Backend | How to enable |
-| --- | --- |
+| Backend                     | How to enable                                                           |
+| --------------------------- | ----------------------------------------------------------------------- |
 | **Claude Code** (preferred) | Be logged in — `claude -p` runs under the hood (no key, tools disabled) |
-| **OpenAI Codex** | `codex login` — runs `codex exec` in a read-only sandbox |
-| **Gemini CLI** | Install + authenticate — runs `gemini -p` |
-| **OpenCode** | `opencode auth` — runs `opencode run` |
-| **Anthropic API** | `export ANTHROPIC_API_KEY=sk-...` — direct API; best for `index` |
-| **Offline** | Nothing — still works, just reveals the diff without a score |
+| **OpenAI Codex**            | `codex login` — runs `codex exec` in a read-only sandbox                |
+| **Gemini CLI**              | Install + authenticate — runs `gemini -p`                               |
+| **OpenCode**                | `opencode auth` — runs `opencode run`                                   |
+| **Anthropic API**           | `export ANTHROPIC_API_KEY=sk-...` — direct API; best for `index`        |
+| **Offline**                 | Nothing — still works, just reveals the diff without a score            |
 
 ```bash
 export DIFFQUIZ_PROVIDER=codex    # optional: force a backend (claude/codex/gemini/opencode/anthropic)
@@ -135,19 +135,19 @@ tmux new-session \; split-window -h -p 33 'diffquiz watch'
 
 ### Command reference
 
-| Command | What it does |
-| --- | --- |
-| `diffquiz index` | Build/refresh the graph (LLM-enriched, cost-gated) |
-| `diffquiz index --structural` | Structure only — no LLM, free |
-| `diffquiz index --yes` | Skip the cost confirmation |
-| `diffquiz index --model <id>` | Model to use for enrichment |
-| `diffquiz once` | One quiz round on the current diff |
-| `diffquiz watch [-i SECS]` | Quiz on each change (default every 3s) |
-| `-C, --repo <path>` | Run against a repo other than the current directory |
+| Command                       | What it does                                        |
+| ----------------------------- | --------------------------------------------------- |
+| `diffquiz index`              | Build/refresh the graph (LLM-enriched, cost-gated)  |
+| `diffquiz index --structural` | Structure only — no LLM, free                       |
+| `diffquiz index --yes`        | Skip the cost confirmation                          |
+| `diffquiz index --model <id>` | Model to use for enrichment                         |
+| `diffquiz once`               | One quiz round on the current diff                  |
+| `diffquiz watch [-i SECS]`    | Quiz on each change (default every 3s)              |
+| `-C, --repo <path>`           | Run against a repo other than the current directory |
 
 ## Why predict-first works
 
-Prediction before feedback is one of the most reliable learning mechanics there is: the moment of *being slightly wrong* is what makes the correction stick. `diffquiz` weaponizes the 30 seconds you'd otherwise spend waiting for your agent — turning dead time into retention.
+Prediction before feedback is one of the most reliable learning mechanics there is: the moment of _being slightly wrong_ is what makes the correction stick. `diffquiz` weaponizes the 30 seconds you'd otherwise spend waiting for your agent — turning dead time into retention.
 
 ## Roadmap
 
@@ -165,4 +165,4 @@ Got an idea? [Open an issue](https://github.com/Bravim-Ketan-Purohit/GIT-diff/is
 
 ## License
 
-MIT © Bravim Purohit
+MIT © Bravim K Purohit
