@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #05070a;
+        color: #e6edf3;
+        font-family: "Inter", sans-serif;
+      }
+      .mono { font-family: "JetBrains Mono", monospace; }
+
+      /* ambient spectrum glow + faint grid (static, render-safe) */
+      #bg { position: absolute; inset: 0; z-index: 0; }
+      #bg .glow {
+        position: absolute; inset: 0;
+        background:
+          radial-gradient(40% 38% at 22% 16%, rgba(167,139,250,0.16), transparent 70%),
+          radial-gradient(42% 40% at 62% 12%, rgba(34,211,238,0.14), transparent 70%),
+          radial-gradient(40% 40% at 84% 20%, rgba(52,211,153,0.12), transparent 70%),
+          radial-gradient(46% 44% at 50% 96%, rgba(251,146,60,0.08), transparent 70%);
+        filter: blur(8px);
+      }
+      #bg .grid {
+        position: absolute; inset: 0; opacity: 0.5;
+        background-image:
+          linear-gradient(to right, rgba(120,140,170,0.06) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(120,140,170,0.06) 1px, transparent 1px);
+        background-size: 64px 64px;
+        -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 35%, transparent 80%);
+        mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 35%, transparent 80%);
+      }
+
+      /* terminal window */
+      .win {
+        position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+        width: 1320px; z-index: 1;
+        border: 1px solid #161d2b; border-radius: 16px;
+        background: #070a10; overflow: hidden;
+        box-shadow: 0 40px 120px -30px rgba(0,0,0,0.85), 0 0 80px -30px rgba(34,211,238,0.30);
+      }
+      .chrome {
+        display: flex; align-items: center; gap: 11px;
+        padding: 18px 24px; border-bottom: 1px solid #161d2b; background: #0b0f17;
+      }
+      .dot { width: 14px; height: 14px; border-radius: 50%; }
+      .chrome .title { margin-left: 12px; font-size: 22px; color: #8a96a8; }
+      .chrome .live { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 18px; color: #4ade80; }
+      .chrome .live .pulse { width: 9px; height: 9px; border-radius: 50%; background: #4ade80; }
+      .body { padding: 40px 44px; min-height: 470px; font-size: 29px; line-height: 1.55; }
+
+      .muted { color: #8a96a8; }
+      .cyan { color: #22d3ee; }
+      .acid { color: #4ade80; }
+      .warn { color: #fbbf24; }
+      .magenta { color: #e879f9; }
+      .rose { color: #fb7185; }
+      .caret { display: inline-block; width: 13px; height: 30px; background: #22d3ee; transform: translateY(5px); margin-left: 4px; }
+
+      .panel { border: 1px solid; border-radius: 14px; background: rgba(0,0,0,0.32); padding: 26px 30px; }
+      .panel.warn-b { border-color: rgba(251,191,36,0.45); box-shadow: 0 0 36px -14px rgba(251,191,36,0.5); }
+      .panel.acid-b { border-color: rgba(74,222,128,0.45); box-shadow: 0 0 36px -14px rgba(74,222,128,0.5); }
+      .panel.mag-b  { border-color: rgba(232,121,249,0.45); box-shadow: 0 0 36px -14px rgba(232,121,249,0.5); }
+      .panel .pt { font-size: 23px; font-weight: 600; margin-bottom: 16px; }
+      .diff { margin: 0; white-space: pre; font-size: 28px; line-height: 1.6; }
+      .row { margin-top: 8px; }
+      .row b { font-weight: 700; }
+
+      /* outro */
+      #outro { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
+               align-items: center; justify-content: center; text-align: center; }
+      #outro .hl {
+        max-width: 1500px; font-size: 86px; font-weight: 800; line-height: 1.06; letter-spacing: -0.02em;
+      }
+      .grad {
+        background: linear-gradient(100deg,#a78bfa,#818cf8,#60a5fa,#22d3ee,#34d399,#fcd34d,#fb923c,#fb7185);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      #outro .logo { margin-top: 54px; display: flex; align-items: center; gap: 16px; font-size: 48px; font-weight: 700; }
+      #outro .agents { margin-top: 26px; font-size: 26px; color: #8a96a8; letter-spacing: 0.01em; }
+      #outro .url { margin-top: 16px; font-size: 24px; color: #5d6b7e; }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-i7xc" id="root" data-composition-id="main" data-start="0" data-duration="19" data-width="1920" data-height="1080">
+      <!-- ambient background -->
+      <div data-hf-id="hf-2xc0" id="bg"><div data-hf-id="hf-2s7n" class="glow"></div><div data-hf-id="hf-kxq8" class="grid"></div></div>
+
+      <!-- SCENE 1: hook -->
+      <div data-hf-id="hf-pjvk" id="s1" class="clip win" data-start="0" data-duration="3" data-track-index="1">
+        <div data-hf-id="hf-6ex2" class="chrome">
+          <span data-hf-id="hf-6e7m" class="dot" style="background:#ff5f57"></span>
+          <span data-hf-id="hf-bm72" class="dot" style="background:#febc2e"></span>
+          <span data-hf-id="hf-c3hs" class="dot" style="background:#28c840"></span>
+          <span data-hf-id="hf-l6a6" class="title mono">diffquiz — watch — zsh</span>
+          <span data-hf-id="hf-xqs2" class="live mono"><span data-hf-id="hf-a8ns" class="pulse"></span>live</span>
+        </div>
+        <div data-hf-id="hf-afjt" class="body mono">
+          <div data-hf-id="hf-18wo" class="l1"><span data-hf-id="hf-zv93" class="acid">❯</span> diffquiz watch<span data-hf-id="hf-uuxe" class="caret"></span></div>
+          <div data-hf-id="hf-x4lb" class="l2 muted" style="margin-top:18px">diffquiz · watching for changes every 3s · Ctrl-C to quit</div>
+          <div data-hf-id="hf-dxsu" class="l3" style="margin-top:18px"><span data-hf-id="hf-l5wb" class="cyan">● change detected</span> <span data-hf-id="hf-dxzg" class="muted">— src/auth.py</span></div>
+        </div>
+      </div>
+
+      <!-- SCENE 2: your move -->
+      <div data-hf-id="hf-5bx5" id="s2" class="clip win" data-start="3" data-duration="4" data-track-index="1">
+        <div data-hf-id="hf-ujgq" class="chrome">
+          <span data-hf-id="hf-3k1i" class="dot" style="background:#ff5f57"></span>
+          <span data-hf-id="hf-paf6" class="dot" style="background:#febc2e"></span>
+          <span data-hf-id="hf-ly14" class="dot" style="background:#28c840"></span>
+          <span data-hf-id="hf-rx1u" class="title mono">diffquiz — watch — zsh</span>
+          <span data-hf-id="hf-mtqu" class="live mono"><span data-hf-id="hf-ser4" class="pulse"></span>live</span>
+        </div>
+        <div data-hf-id="hf-2brh" class="body mono">
+          <div data-hf-id="hf-k0l3" class="panel warn-b">
+            <div data-hf-id="hf-t6eu" class="pt warn">🧠 your move</div>
+            <div data-hf-id="hf-ije3">src/auth.py changed. <span data-hf-id="hf-06i1" class="warn">validate_token</span> is called by <span data-hf-id="hf-xvuc" class="warn">3 routes</span> — what did the agent harden, and why?</div>
+          </div>
+          <div data-hf-id="hf-a914" class="pred" style="margin-top:26px"><span data-hf-id="hf-xzr2" class="muted">Your prediction</span> <span data-hf-id="hf-ok32" class="acid">▸</span> added a token-expiry check?<span data-hf-id="hf-ltg6" class="caret"></span></div>
+        </div>
+      </div>
+
+      <!-- SCENE 3: reveal -->
+      <div data-hf-id="hf-dhz0" id="s3" class="clip win" data-start="7" data-duration="4" data-track-index="1">
+        <div data-hf-id="hf-uxrr" class="chrome">
+          <span data-hf-id="hf-3ycj" class="dot" style="background:#ff5f57"></span>
+          <span data-hf-id="hf-poq7" class="dot" style="background:#febc2e"></span>
+          <span data-hf-id="hf-kr41" class="dot" style="background:#28c840"></span>
+          <span data-hf-id="hf-sbcv" class="title mono">diffquiz — watch — zsh</span>
+          <span data-hf-id="hf-n81v" class="live mono"><span data-hf-id="hf-r7u1" class="pulse"></span>live</span>
+        </div>
+        <div data-hf-id="hf-3iok" class="body mono">
+          <div data-hf-id="hf-n13s" class="panel acid-b">
+            <div data-hf-id="hf-j7ja" class="pt acid">🔍 what actually changed</div>
+            <pre data-hf-id="hf-zrmf" class="diff"><span data-hf-id="hf-y8ns" class="ctx muted">@@ def validate_token(token): @@</span>
+<span data-hf-id="hf-yq6b" class="del rose">-    return jwt.decode(token, SECRET)</span>
+<span data-hf-id="hf-8hm4" class="add acid">+    return jwt.decode(token, SECRET, algorithms=["HS256"])</span></pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 4: scorecard -->
+      <div data-hf-id="hf-5caw" id="s4" class="clip win" data-start="11" data-duration="4" data-track-index="1">
+        <div data-hf-id="hf-vc2s" class="chrome">
+          <span data-hf-id="hf-4cnk" class="dot" style="background:#ff5f57"></span>
+          <span data-hf-id="hf-q318" class="dot" style="background:#febc2e"></span>
+          <span data-hf-id="hf-l5f2" class="dot" style="background:#28c840"></span>
+          <span data-hf-id="hf-spnw" class="title mono">diffquiz — watch — zsh</span>
+          <span data-hf-id="hf-nmcw" class="live mono"><span data-hf-id="hf-rm52" class="pulse"></span>live</span>
+        </div>
+        <div data-hf-id="hf-34dj" class="body mono">
+          <div data-hf-id="hf-s78u" class="panel mag-b">
+            <div data-hf-id="hf-kfci" class="pt magenta">📊 scorecard</div>
+            <div data-hf-id="hf-8fzf" class="r1 row"><b data-hf-id="hf-duui" class="acid">SCORE:</b> 60/100 — right that it's a security fix, wrong mechanism.</div>
+            <div data-hf-id="hf-6nk8" class="r2 row"><b data-hf-id="hf-3hhm" class="warn">MISSED:</b> it pins the JWT algorithm (algorithms=["HS256"]).</div>
+            <div data-hf-id="hf-9dsq" class="r3 row"><b data-hf-id="hf-9yzf" class="rose">WATCH:</b> RS256 callers now fail to decode — check the 3 routes.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCENE 5: outro -->
+      <div data-hf-id="hf-h0hl" id="outro" class="clip" data-start="15" data-duration="4" data-track-index="2">
+        <div data-hf-id="hf-lc99" class="hl">Predict the diff before you read <span data-hf-id="hf-gzgn" class="grad">what your AI just wrote.</span></div>
+        <div data-hf-id="hf-6rp2" class="logo mono">
+          <svg data-hf-id="hf-y0zt" viewBox="0 0 64 64" width="52" height="52" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <circle data-hf-id="hf-i7wi" cx="27" cy="37" r="19" stroke="#22d3ee" stroke-width="4" />
+            <circle data-hf-id="hf-x9r3" cx="27" cy="37" r="11" stroke="#22d3ee" stroke-width="4" stroke-opacity="0.55" />
+            <circle data-hf-id="hf-842y" cx="27" cy="37" r="4.5" fill="#67e8f9" />
+            <g data-hf-id="hf-i9kj" stroke="#4ade80" stroke-width="4" stroke-linecap="round">
+              <line data-hf-id="hf-3l4i" x1="53" y1="11" x2="34.1" y2="29.9" />
+              <line data-hf-id="hf-gjwq" x1="50" y1="8" x2="55" y2="13" stroke-width="3" />
+              <line data-hf-id="hf-z55u" x1="47" y1="11" x2="52" y2="16" stroke-width="3" />
+            </g>
+            <polygon data-hf-id="hf-2cjl" points="27,37 37.96,33.82 30.18,26.04" fill="#4ade80" />
+          </svg>
+          <span data-hf-id="hf-mcji">diff<span data-hf-id="hf-tx1k" class="grad">quiz</span></span>
+        </div>
+        <div data-hf-id="hf-ibbg" class="agents mono">Claude Code · OpenAI Codex · Gemini CLI · opencode</div>
+        <div data-hf-id="hf-zivv" class="url mono">github.com/Bravim-Ketan-Purohit/GIT-diff</div>
+      </div>
+
+      <!-- AUDIO — royalty-free music bed (ende.app) + CC0 SFX (Kenney), from /brag assets.
+           Music on track 10; each SFX on its own ascending track so nothing overlaps a track. -->
+      <audio data-hf-id="hf-561y" id="bgm" data-start="0" data-duration="19" data-track-index="10" data-volume="0.3" src="assets/music/happy-beats-business-moves-vol-9-by-ende-dot-app.mp3"></audio>
+
+      <!-- s1: typed command (key ticks) + change detected -->
+      <audio data-hf-id="hf-i9is" id="sfx-k1" data-start="0.12" data-duration="0.5" data-track-index="11" data-volume="0.5" src="assets/sfx/keyboard/keypress-001.wav"></audio>
+      <audio data-hf-id="hf-6lfv" id="sfx-k2" data-start="0.24" data-duration="0.5" data-track-index="12" data-volume="0.5" src="assets/sfx/keyboard/keypress-003.wav"></audio>
+      <audio data-hf-id="hf-z4qq" id="sfx-k3" data-start="0.36" data-duration="0.5" data-track-index="13" data-volume="0.5" src="assets/sfx/keyboard/keypress-005.wav"></audio>
+      <audio data-hf-id="hf-c854" id="sfx-detect" data-start="1.9" data-duration="1.2" data-track-index="14" data-volume="0.55" src="assets/sfx/impact/impactSoft_medium_001.ogg"></audio>
+
+      <!-- s2: your-move panel + typed prediction -->
+      <audio data-hf-id="hf-kat8" id="sfx-move" data-start="3.18" data-duration="0.8" data-track-index="15" data-volume="0.6" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio data-hf-id="hf-17it" id="sfx-k4" data-start="4.23" data-duration="0.5" data-track-index="16" data-volume="0.5" src="assets/sfx/keyboard/keypress-002.wav"></audio>
+      <audio data-hf-id="hf-jqjs" id="sfx-k5" data-start="4.35" data-duration="0.5" data-track-index="17" data-volume="0.5" src="assets/sfx/keyboard/keypress-004.wav"></audio>
+      <audio data-hf-id="hf-w3iv" id="sfx-k6" data-start="4.47" data-duration="0.5" data-track-index="18" data-volume="0.5" src="assets/sfx/keyboard/keypress-006.wav"></audio>
+
+      <!-- s3: the diff reveal — the payoff hit (beat-locked 9.50) -->
+      <audio data-hf-id="hf-p8gs" id="sfx-reveal" data-start="9.5" data-duration="1.6" data-track-index="19" data-volume="0.7" src="assets/sfx/impact/impactBell_heavy_000.ogg"></audio>
+
+      <!-- s4: scorecard rows -->
+      <audio data-hf-id="hf-4b1o" id="sfx-row1" data-start="11.6" data-duration="0.8" data-track-index="20" data-volume="0.55" src="assets/sfx/interface/drop_001.ogg"></audio>
+      <audio data-hf-id="hf-a50d" id="sfx-row2" data-start="12.12" data-duration="0.8" data-track-index="21" data-volume="0.55" src="assets/sfx/interface/drop_002.ogg"></audio>
+      <audio data-hf-id="hf-neyi" id="sfx-row3" data-start="12.65" data-duration="0.8" data-track-index="22" data-volume="0.6" src="assets/sfx/interface/drop_003.ogg"></audio>
+
+      <!-- s5: logo sting (beat 15.81) -->
+      <audio data-hf-id="hf-uz2s" id="sfx-logo" data-start="15.81" data-duration="1.8" data-track-index="23" data-volume="0.75" src="assets/sfx/impact/impactBell_heavy_003.ogg"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // Scene 1 — hook (terminal present from frame 0; the command types in)
+      tl.fromTo("#s1 .l1", { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.3 }, 0.1);
+      tl.fromTo("#s1 .l2", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 1.1);
+      tl.fromTo("#s1 .l3", { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.3 }, 1.9);
+      tl.to("#s1 .caret", { opacity: 0, duration: 0.5, repeat: 5, yoyo: true }, 0.4);
+
+      // Scene 2 — your move
+      tl.fromTo("#s2", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 3.0);
+      tl.fromTo("#s2 .panel", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 3.18); // beat 3.18
+      tl.fromTo("#s2 .pred", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 4.23); // beat 4.23
+      tl.to("#s2 .caret", { opacity: 0, duration: 0.5, repeat: 3, yoyo: true }, 4.5);
+
+      // Scene 3 — reveal
+      tl.fromTo("#s3", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 7.0);
+      tl.fromTo("#s3 .panel", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 7.05);
+      tl.fromTo("#s3 .ctx", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 7.5);
+      tl.fromTo("#s3 .del", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 7.9);
+      tl.fromTo("#s3 .add", { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.7)" }, 9.5); // beat-locked: strong cue 9.50s
+
+      // Scene 4 — scorecard
+      tl.fromTo("#s4", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 11.0);
+      tl.fromTo("#s4 .panel", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power2.out" }, 11.06);
+      // fast reveal on the beat, then the full set holds on screen until 15s (readable)
+      tl.fromTo("#s4 .r1", { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.3 }, 11.6); // beat-grid: 11.60s
+      tl.fromTo("#s4 .r2", { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.3 }, 12.12); // beat-grid: 12.12s
+      tl.fromTo("#s4 .r3", { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.3 }, 12.65); // beat-grid: 12.65s
+
+      // Scene 5 — outro
+      tl.fromTo("#outro", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 15.0);
+      tl.fromTo("#outro .hl", { opacity: 0, y: 26 }, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, 15.1);
+      tl.fromTo("#outro .logo", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5, ease: "power2.out" }, 15.81); // beat 15.81
+      tl.fromTo("#outro .agents", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 16.4);
+      tl.fromTo("#outro .url", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 16.8);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

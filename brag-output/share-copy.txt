@@ -1,0 +1,1 @@
+Made diffquiz — it quizzes you on your AI agent's diffs before you read them. You predict the change, then it reveals the real diff and scores your guess, flagging what's about to break. Stop rubber-stamping your AI's code. 🎯
